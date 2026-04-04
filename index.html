@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shaka HLS + DASH Player Demo</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: #0f172a;
+            color: #e2e8f0;
+            font-family: Segoe UI, Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .wrap { width: min(1100px, 100%); }
+        h1 { font-size: 24px; margin: 0 0 12px; }
+        p { margin: 0 0 16px; color: #94a3b8; }
+        .card {
+            border: 1px solid #334155;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #020617;
+        }
+    </style>
+    <script src="./player.js"></script>
+</head>
+<body>
+    <div class="wrap">
+        <h1>Shaka HLS + DASH Player</h1>
+        <p>Standalone web component (no Video.js).</p>
+        <div class="card">
+            <div style="aspect-ratio:16/9;">
+                <shaka-hls-dash-player base-url="https://cdn.roncodev.com/demo-video/"></shaka-hls-dash-player>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
