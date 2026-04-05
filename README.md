@@ -250,6 +250,16 @@ player.configure('streaming.bufferingGoal', 60);
 - The component uses `customElements.define()` and is registered as `shaka-hls-dash-player`. It will not re-register if already defined.
 - Playback doesn't start until the user clicks the player. This avoids autoplay restrictions and saves bandwidth.
 
+## Live Demo
+
+See this component in action on the [roncodev.com demo page](https://roncodev.com/demo), streaming a real converted video from Cloudflare R2.
+
+For a standalone showcase with feature highlights and embed examples, visit the [demo site](https://roncojhon.github.io/shaka-hls-dash-player-demo/).
+
+## About
+
+Built by [RoncoDev](https://roncodev.com). This component powers the player in [DASH/HLS Packager](https://roncodev.com) — a desktop app that converts any video into multi-resolution HLS & DASH with thumbnails, subtitles, and dual manifests.
+
 ## License
 
 MIT
