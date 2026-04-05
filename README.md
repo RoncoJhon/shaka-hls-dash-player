@@ -258,7 +258,7 @@ For a standalone showcase with feature highlights and embed examples, visit the 
 
 ## About
 
-Built by [RoncoDev](https://roncodev.com). This component powers the player in [DASH/HLS Packager](https://roncodev.com) — a desktop app that converts any video into multi-resolution HLS & DASH with thumbnails, subtitles, and dual manifests.
+This component powers the player in [DASH/HLS Packager](https://roncodev.com) — a desktop app that converts any video into multi-resolution HLS & DASH with thumbnails, subtitles, and dual manifests.
 
 ## License
 
