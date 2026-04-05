@@ -83,17 +83,29 @@
         style.textContent = [
             'shaka-hls-dash-player{display:block;width:100%;height:100%}',
             '.sdp-wrap{position:relative;width:100%;height:100%;min-height:200px;background:#000;overflow:hidden}',
+            '@media (max-width:369px){.sdp-wrap{min-height:0!important}}',
             '.sdp-preview{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;z-index:5;opacity:0;transition:opacity .2s;pointer-events:none}',
             '.sdp-preview.active{opacity:1}.sdp-wrap.playing .sdp-preview{display:none}',
-            '.sdp-container{position:relative;width:100%;height:100%;aspect-ratio:16/9}.sdp-video{width:100%;height:100%}',
-            '.sdp-badge{position:absolute;top:10px;right:10px;z-index:20;background:rgba(0,0,0,.7);color:#34d399;border-radius:4px;font-size:12px;font-weight:600;padding:4px 10px;pointer-events:none}',
+            '.sdp-wrap.prestart .shaka-controls-container,.sdp-wrap.prestart .shaka-overflow-menu,.sdp-wrap.prestart .shaka-settings-menu,.sdp-wrap.prestart .shaka-play-button-container{opacity:0!important;visibility:hidden!important;pointer-events:none!important;z-index:0!important}',
+            '.sdp-wrap.prestart{cursor:pointer}',
+            '.sdp-container{position:relative;width:100%;height:100%}.sdp-video{width:100%;height:100%}',
+            '.sdp-badge{display:none!important;position:absolute;top:10px;right:10px;z-index:20;background:rgba(0,0,0,.7);color:#34d399;border-radius:4px;font-size:12px;font-weight:600;padding:4px 10px;pointer-events:none}',
             '.sdp-thumb{display:none;position:absolute;left:0;bottom:74px;z-index:3000;pointer-events:none}',
             '.sdp-thumb-frame{position:relative;width:240px;height:135px;border-radius:6px;overflow:hidden;border:2px solid rgba(255,255,255,.9);background:#111;box-shadow:0 4px 12px rgba(0,0,0,.55)}',
-            '.sdp-thumb-img{position:absolute;left:0;top:0}.sdp-thumb-time{margin-top:6px;text-align:center;color:#fff;font-size:11px;font-weight:600;text-shadow:0 1px 2px rgba(0,0,0,.95),0 0 8px rgba(0,0,0,.85),0 0 2px rgba(0,0,0,.95)}',
+            '.sdp-thumb-img{position:absolute;left:0;top:0}.sdp-thumb-time{display:block;width:fit-content;margin:8px auto 0;padding:4px 10px;text-align:center;color:#fff;font-size:13px;font-weight:400;line-height:1.1;border-radius:999px;background:rgba(0,0,0,.78);box-shadow:0 4px 12px rgba(0,0,0,.5),inset 0 0 0 1px rgba(255,255,255,.15);text-shadow:0 1px 2px rgba(0,0,0,.95)}',
             '.sdp-container .shaka-range-container.shaka-seek-bar-container{box-shadow:0 1px 2px rgba(0,0,0,.22)!important}',
             '.sdp-container .shaka-range-element.shaka-seek-bar{box-shadow:none!important;filter:none!important}',
             '.sdp-container .shaka-range-element.shaka-seek-bar::-webkit-slider-runnable-track{box-shadow:none!important}',
-            '.sdp-container .shaka-range-element.shaka-seek-bar::-moz-range-track{box-shadow:none!important}'
+            '.sdp-container .shaka-range-element.shaka-seek-bar::-moz-range-track{box-shadow:none!important}',
+            '.sdp-container .shaka-volume-bar-container{width:66px!important;min-width:66px!important}',
+            '.sdp-container .shaka-overflow-menu,.sdp-container .shaka-settings-menu{max-height:min(70vh,calc(100% - 64px))!important;overflow-y:auto!important;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}',
+            '@media (max-width:499px){.sdp-container .shaka-overflow-menu,.sdp-container .shaka-settings-menu{max-height:min(78vh,calc(100% - 52px))!important}}',
+            '.sdp-container .shaka-player-ui-thumbnail-container{display:none!important}',
+            '.sdp-container .shaka-player-ui-thumbnail-time-container{display:none!important}',
+            '.sdp-container .shaka-player-ui-thumbnail-time{display:none!important}',
+            '.sdp-container .shaka-seek-bar-container .shaka-hover-time{display:none!important}',
+            '.sdp-container .shaka-seek-bar-container .shaka-thumbnail-container{display:none!important}',
+            '.sdp-container .shaka-seek-bar-container > :not(.shaka-ad-markers):not(.shaka-chapter-markers):not(.shaka-seek-bar){display:none!important}',
         ].join('');
         document.head.appendChild(style);
     }
@@ -135,6 +147,12 @@
         var lines = (text || '').replace(/\r/g, '').split('\n');
         var cues = [];
 
+        // Support both absolute and relative VTT URLs (local testing often uses relative paths).
+        var vttBase = vttUrl || '';
+        if (typeof document !== 'undefined' && document.baseURI) {
+            try { vttBase = new URL(vttBase, document.baseURI).href; } catch (e) {}
+        }
+
         for (var i = 0; i < lines.length; i++) {
             var line = lines[i].trim();
             if (!line || line === 'WEBVTT' || line.indexOf('-->') === -1) continue;
@@ -143,7 +161,7 @@
             if (times.length !== 2) continue;
 
             var start = parseTs(times[0]);
-            var end = parseTs(times[1].trim().split(/\\s+/)[0]);
+            var end = parseTs(times[1].trim().split(/\s+/)[0]);
             if (isNaN(start) || isNaN(end)) continue;
 
             var payload = '';
@@ -151,7 +169,8 @@
             while (j < lines.length && !payload) { payload = lines[j].trim(); j++; }
             if (!payload) continue;
 
-            var abs = new URL(payload, vttUrl).href;
+            var abs = payload;
+            try { abs = new URL(payload, vttBase).href; } catch (e) {}
             var m = abs.match(/#xywh=(\d+),(\d+),(\d+),(\d+)$/);
             cues.push({
                 start: start,
@@ -185,10 +204,20 @@
             el._fallbackTried = false;
             el._started = false;
             el._thumbCues = [];
+            el._thumbRatioBySrc = Object.create(null);
             el._thumbRetryTimer = null;
             el._thumbObserver = null;
             el._seekTrack = null;
             el._vttAbort = null;
+            el._streamLoaded = false;
+            el._starting = false;
+            el._startPromise = null;
+            el._unloadPromise = Promise.resolve();
+            el._onStartRequest = null;
+            el._onMenuClick = null;
+            el._onUiResize = null;
+            el._resizeUiTimer = null;
+            el._lastCfg = null;
             return el;
         }
 
@@ -217,6 +246,9 @@
         PlayerEl.prototype.disconnectedCallback = function () {
             this._removePreviewHandlers();
             this._removeKeyboard();
+            this._removeMenuAutoClose();
+            this._removeResponsiveUi();
+            this._removeStartRequest();
             this._teardownThumbs();
 
             if (this._vttAbort) {
@@ -297,13 +329,11 @@
 
             var container = document.createElement('div');
             container.className = 'sdp-container';
-            container.setAttribute('data-shaka-player-container', '');
 
             var video = document.createElement('video');
             video.className = 'sdp-video';
             video.id = this._id + '-video';
-            video.setAttribute('data-shaka-player', '');
-            video.controls = true;
+            video.controls = false;
             video.preload = 'auto';
             video.playsInline = true;
             video.setAttribute('playsinline', '');
@@ -323,6 +353,21 @@
             img.className = 'sdp-thumb-img';
             img.alt = '';
             img.draggable = false;
+            var self = this;
+            img.addEventListener('load', function () {
+                var src = img.currentSrc || img.src;
+                if (!src) return;
+                if (!img.naturalWidth || !img.naturalHeight) return;
+                var ratio = img.naturalWidth / img.naturalHeight;
+                if (!isFinite(ratio) || ratio <= 0) return;
+                self._thumbRatioBySrc[src] = ratio;
+                if (self._thumb && self._thumb.style.display === 'block') {
+                    var activeSrc = self._thumbImg.currentSrc || self._thumbImg.src;
+                    if (activeSrc === src && self._thumbImg.style.objectFit === 'contain') {
+                        self._applyThumbFrameRatio(ratio);
+                    }
+                }
+            });
             frame.appendChild(img);
 
             var time = document.createElement('div');
@@ -369,6 +414,7 @@
                 self._player.addEventListener('adaptation', self._onAdapt);
                 self._player.addEventListener('variantchanged', self._onVariant);
                 self._video.addEventListener('playing', self._onPlaying);
+                self._updateMenuAutoClose();
 
                 self._initialized = true;
                 self._reload();
@@ -416,46 +462,94 @@
                 }
             });
 
+            this._lastCfg = cfg;
+
             if (this._ui) {
-                this._ui.configure({
-                    controlPanelElements: ['play_pause', 'time_and_duration', 'spacer', 'mute', 'volume', 'captions', 'quality', 'playback_rate', 'picture_in_picture', 'fullscreen', 'overflow_menu'],
-                    overflowMenuButtons: ['quality', 'captions', 'playback_rate', 'language', 'picture_in_picture', 'loop'],
-                    addSeekBar: true,
-                    addBigPlayButton: true,
-                    enableTooltips: true,
-                    enableKeyboardPlaybackControls: !cfg.noKeyboard,
-                    playbackRates: cfg.playbackRates,
-                    seekBarColors: { base: 'rgba(255,255,255,.30)', buffered: 'rgba(255,255,255,.45)', played: '#6366f1' }
-                });
+                this._applyUiConfig(cfg);
+                this._ensureResponsiveUi();
+            }
+        };
+
+        PlayerEl.prototype._applyUiConfig = function (cfg) {
+            if (!this._ui) return;
+
+            var compact = false;
+            if (typeof window !== 'undefined' && typeof window.innerWidth === 'number') {
+                compact = window.innerWidth < 500;
+            } else if (window.matchMedia) {
+                compact = window.matchMedia('(max-width: 499px)').matches;
+            }
+
+            var controlPanelElements = compact
+                ? ['play_pause', 'time_and_duration', 'spacer', 'mute', 'volume', 'fullscreen', 'overflow_menu']
+                : ['play_pause', 'time_and_duration', 'spacer', 'mute', 'volume', 'captions', 'quality', 'playback_rate', 'picture_in_picture', 'fullscreen', 'overflow_menu'];
+
+            this._ui.configure({
+                controlPanelElements: controlPanelElements,
+                overflowMenuButtons: ['quality', 'captions', 'playback_rate', 'language', 'picture_in_picture', 'loop'],
+                addSeekBar: true,
+                addBigPlayButton: true,
+                enableTooltips: true,
+                enableKeyboardPlaybackControls: !cfg.noKeyboard,
+                playbackRates: cfg.playbackRates,
+                seekBarColors: { base: 'rgba(255,255,255,.30)', buffered: 'rgba(255,255,255,.45)', played: '#6366f1' }
+            });
+        };
+
+        PlayerEl.prototype._ensureResponsiveUi = function () {
+            var self = this;
+            if (typeof window === 'undefined' || !window.addEventListener) return;
+            if (this._onUiResize) return;
+
+            this._onUiResize = function () {
+                if (!self._ui || !self._lastCfg) return;
+
+                if (self._resizeUiTimer) clearTimeout(self._resizeUiTimer);
+                self._resizeUiTimer = setTimeout(function () {
+                    self._resizeUiTimer = null;
+                    self._applyUiConfig(self._lastCfg);
+                    self._refreshThumbBindings();
+                }, 80);
+            };
+
+            window.addEventListener('resize', this._onUiResize);
+        };
+
+        PlayerEl.prototype._removeResponsiveUi = function () {
+            if (typeof window !== 'undefined' && window.removeEventListener && this._onUiResize) {
+                window.removeEventListener('resize', this._onUiResize);
+            }
+            this._onUiResize = null;
+
+            if (this._resizeUiTimer) {
+                clearTimeout(this._resizeUiTimer);
+                this._resizeUiTimer = null;
             }
         };
 
         PlayerEl.prototype._reload = function () {
-            var self = this;
             if (!this._player) return;
 
-            var version = ++this._version;
+            ++this._version;
             var cfg = this._cfg();
 
             this._started = false;
+            this._starting = false;
+            this._streamLoaded = false;
+            this._startPromise = null;
             this._fallbackTried = false;
             this._wrap.classList.remove('playing');
+            this._wrap.classList.add('prestart');
+
             this._applyPosterPreview(cfg);
             this._configure(cfg);
             this._updateKeyboard();
+            this._teardownThumbs();
+            this._armStartRequest();
 
-            this._player.unload().catch(function () {}).then(function () {
-                if (version !== self._version) return;
-                return self._loadWithFallback(cfg, version);
-            }).then(function () {
-                if (version !== self._version) return;
-                self._updateBadge();
-                self._setupThumbs(cfg, version);
-            }).catch(function (e) {
-                if (version !== self._version) return;
-                console.error('[shaka-hls-dash-player] Stream load failed:', e);
-            });
+            this._unloadPromise = this._player.unload().catch(function () {});
         };
+
         PlayerEl.prototype._loadWithFallback = function (cfg, version) {
             var self = this;
             var preferred = preferredFormat(cfg.format);
@@ -509,7 +603,7 @@
         PlayerEl.prototype._addPreviewHandlers = function () {
             var self = this;
             this._onPreviewEnter = function () {
-                if (self._started || !self._cfg().previewVideo) return;
+                if (self._started || self._starting || !self._cfg().previewVideo) return;
                 self._preview.classList.add('active');
                 self._preview.play().catch(function () {});
             };
@@ -532,12 +626,76 @@
 
         PlayerEl.prototype._onMainPlaying = function () {
             this._started = true;
+            this._starting = false;
+            this._wrap.classList.remove('prestart');
             this._wrap.classList.add('playing');
             this._preview.pause();
             this._preview.classList.remove('active');
+            this._removeStartRequest();
         };
 
-                PlayerEl.prototype._setupThumbs = function (cfg, version) {
+        PlayerEl.prototype._armStartRequest = function () {
+            var self = this;
+            this._removeStartRequest();
+            if (!this._wrap) return;
+
+            this._onStartRequest = function (ev) {
+                if (self._started || self._starting) return;
+                if (ev && typeof ev.button === 'number' && ev.button !== 0) return;
+                self._startStreamPlayback();
+            };
+
+            this._wrap.addEventListener('click', this._onStartRequest);
+        };
+
+        PlayerEl.prototype._removeStartRequest = function () {
+            if (!this._wrap || !this._onStartRequest) return;
+            this._wrap.removeEventListener('click', this._onStartRequest);
+            this._onStartRequest = null;
+        };
+
+        PlayerEl.prototype._startStreamPlayback = function () {
+            var self = this;
+            if (!this._player) return Promise.resolve();
+            if (this._startPromise) return this._startPromise;
+
+            var version = this._version;
+            var cfg = this._cfg();
+
+            this._starting = true;
+            this._wrap.classList.remove('prestart');
+            this._preview.pause();
+            this._preview.classList.remove('active');
+
+            this._startPromise = Promise.resolve(this._unloadPromise)
+                .then(function () {
+                    if (version !== self._version) return;
+                    if (self._streamLoaded) return;
+                    return self._loadWithFallback(cfg, version).then(function () {
+                        if (version !== self._version) return;
+                        self._streamLoaded = true;
+                        self._updateBadge();
+                        self._setupThumbs(cfg, version);
+                    });
+                })
+                .then(function () {
+                    if (version !== self._version) return;
+                    return self._video.play();
+                })
+                .catch(function (e) {
+                    if (version !== self._version) return;
+                    self._starting = false;
+                    if (!self._streamLoaded) self._wrap.classList.add('prestart');
+                    console.error('[shaka-hls-dash-player] Start playback failed:', e);
+                })
+                .finally(function () {
+                    if (version === self._version) self._startPromise = null;
+                });
+
+            return this._startPromise;
+        };
+
+        PlayerEl.prototype._setupThumbs = function (cfg, version) {
             var self = this;
             this._teardownThumbs();
             if (!cfg.thumbnailsVtt) return;
@@ -643,7 +801,6 @@
             var self = this;
             var seek = this._findThumbSeek();
             var target = seek ? seek.target : null;
-            var controls = this._container.querySelector('.shaka-controls-container');
 
             if (!target) return false;
 
@@ -653,12 +810,9 @@
             this._seekTrack = (seek && seek.track) ? seek.track : target;
             this._onSeekMove = function (ev) { self._hoverThumb(ev); };
             this._onSeekLeave = function () { self._hideThumb(); };
-            this._onWrapMove = function (ev) { self._hoverThumb(ev); };
-            this._onWrapLeave = function () { self._hideThumb(); };
 
             var targets = [target];
             if (this._seekTrack && targets.indexOf(this._seekTrack) === -1) targets.push(this._seekTrack);
-            if (controls && targets.indexOf(controls) === -1) targets.push(controls);
 
             this._hoverTargets = targets;
 
@@ -669,11 +823,6 @@
                 t.addEventListener('mouseleave', this._onSeekLeave);
                 t.addEventListener('pointerleave', this._onSeekLeave);
             }
-
-            this._wrap.addEventListener('mousemove', this._onWrapMove);
-            this._wrap.addEventListener('pointermove', this._onWrapMove);
-            this._wrap.addEventListener('mouseleave', this._onWrapLeave);
-            this._wrap.addEventListener('pointerleave', this._onWrapLeave);
             return true;
         };
 
@@ -695,6 +844,36 @@
             });
 
             this._thumbObserver.observe(this._container, { childList: true, subtree: true });
+        };
+
+        PlayerEl.prototype._refreshThumbBindings = function () {
+            var self = this;
+            if (!this._thumbCues || !this._thumbCues.length) return;
+
+            this._hideThumb();
+            this._unbindThumbSeek();
+
+            var attempts = 0;
+            var tryBind = function () {
+                attempts++;
+                if (self._bindThumbSeek()) return;
+                if (attempts >= 8) {
+                    self._observeThumbSeekBar();
+                    return;
+                }
+
+                if (typeof window !== 'undefined' && window.requestAnimationFrame) {
+                    window.requestAnimationFrame(tryBind);
+                } else {
+                    setTimeout(tryBind, 16);
+                }
+            };
+
+            if (typeof window !== 'undefined' && window.requestAnimationFrame) {
+                window.requestAnimationFrame(tryBind);
+            } else {
+                setTimeout(tryBind, 0);
+            }
         };
 
         PlayerEl.prototype._teardownThumbs = function () {
@@ -731,7 +910,7 @@
             }
             if (!rect.width) return;
 
-            var yMargin = 16;
+            var yMargin = 8;
             if (ev.clientY < (rect.top - yMargin) || ev.clientY > (rect.bottom + yMargin)) {
                 this._hideThumb();
                 return;
@@ -772,6 +951,38 @@
 
             this._showThumb(cue, time, ev);
         };
+
+        PlayerEl.prototype._defaultThumbRatio = function () {
+            if (this._video && this._video.videoWidth > 0 && this._video.videoHeight > 0) {
+                var videoRatio = this._video.videoWidth / this._video.videoHeight;
+                if (isFinite(videoRatio) && videoRatio > 0) return videoRatio;
+            }
+            if (this._container) {
+                var rect = this._container.getBoundingClientRect();
+                if (rect.width > 0 && rect.height > 0) {
+                    var containerRatio = rect.width / rect.height;
+                    if (isFinite(containerRatio) && containerRatio > 0) return containerRatio;
+                }
+            }
+            return 16 / 9;
+        };
+
+        PlayerEl.prototype._applyThumbFrameRatio = function (ratio) {
+            var maxW = 260;
+            var maxH = 260;
+            if (!isFinite(ratio) || ratio <= 0) ratio = this._defaultThumbRatio();
+
+            var boxW = maxW;
+            var boxH = Math.round(boxW / ratio);
+            if (boxH > maxH) {
+                boxH = maxH;
+                boxW = Math.round(boxH * ratio);
+            }
+
+            this._thumbFrame.style.width = boxW + 'px';
+            this._thumbFrame.style.height = boxH + 'px';
+        };
+
         PlayerEl.prototype._showThumb = function (cue, time, ev) {
             this._thumbTime.textContent = fmtTime(time);
 
@@ -785,24 +996,21 @@
                 this._thumbImg.style.top = (-cue.y) + 'px';
                 this._thumbImg.style.objectFit = 'unset';
             } else {
-                var maxW = 260;
-                var maxH = 260;
-                var ratio = 16 / 9;
+                var ratio = 0;
+                var cueSrc = cue.src || '';
+                if (cueSrc && this._thumbRatioBySrc[cueSrc]) {
+                    ratio = this._thumbRatioBySrc[cueSrc];
+                }
 
-                if (this._thumbImg && this._thumbImg.src === cue.src && this._thumbImg.naturalWidth > 0 && this._thumbImg.naturalHeight > 0) {
+                if ((!isFinite(ratio) || ratio <= 0) && this._thumbImg && this._thumbImg.src === cue.src && this._thumbImg.naturalWidth > 0 && this._thumbImg.naturalHeight > 0) {
                     ratio = this._thumbImg.naturalWidth / this._thumbImg.naturalHeight;
+                    if (cueSrc && isFinite(ratio) && ratio > 0) {
+                        this._thumbRatioBySrc[cueSrc] = ratio;
+                    }
                 }
-                if (!isFinite(ratio) || ratio <= 0) ratio = 16 / 9;
+                if (!isFinite(ratio) || ratio <= 0) ratio = this._defaultThumbRatio();
 
-                var boxW = maxW;
-                var boxH = Math.round(boxW / ratio);
-                if (boxH > maxH) {
-                    boxH = maxH;
-                    boxW = Math.round(boxH * ratio);
-                }
-
-                this._thumbFrame.style.width = boxW + 'px';
-                this._thumbFrame.style.height = boxH + 'px';
+                this._applyThumbFrameRatio(ratio);
                 this._thumbImg.src = cue.src;
                 this._thumbImg.style.width = '100%';
                 this._thumbImg.style.height = '100%';
@@ -860,6 +1068,7 @@
                     case ' ':
                     case 'k':
                         e.preventDefault();
+                        if (!self._streamLoaded) { self._startStreamPlayback(); break; }
                         self._video.paused ? self._video.play() : self._video.pause();
                         break;
                     case 'f':
@@ -901,6 +1110,57 @@
             if (!this._onKeyDown) return;
             document.removeEventListener('keydown', this._onKeyDown);
             this._onKeyDown = null;
+        };
+
+        PlayerEl.prototype._updateMenuAutoClose = function () {
+            var self = this;
+            this._removeMenuAutoClose();
+            if (!this._container) return;
+
+            this._onMenuClick = function (ev) {
+                var target = ev && ev.target;
+                if (!target || !target.closest) return;
+
+                var btn = target.closest('button');
+                if (!btn || !self._container.contains(btn)) return;
+                if (!btn.closest('.shaka-settings-menu')) return;
+                if (btn.classList.contains('shaka-back-to-overflow-button') || btn.classList.contains('shaka-back-button')) return;
+                if (btn.disabled || btn.getAttribute('aria-disabled') === 'true') return;
+
+                setTimeout(function () { self._closeShakaMenus(); }, 0);
+            };
+
+            this._container.addEventListener('click', this._onMenuClick, true);
+        };
+
+        PlayerEl.prototype._removeMenuAutoClose = function () {
+            if (!this._container || !this._onMenuClick) return;
+            this._container.removeEventListener('click', this._onMenuClick, true);
+            this._onMenuClick = null;
+        };
+
+        PlayerEl.prototype._closeShakaMenus = function () {
+            var controls = null;
+            if (this._ui && typeof this._ui.getControls === 'function') {
+                controls = this._ui.getControls();
+            }
+            if (controls && typeof controls.hideSettingsMenus === 'function') {
+                controls.hideSettingsMenus();
+                return;
+            }
+
+            if (!this._container) return;
+            var menus = this._container.querySelectorAll('.shaka-overflow-menu, .shaka-settings-menu');
+            for (var i = 0; i < menus.length; i++) {
+                menus[i].classList.remove('shaka-displayed');
+                menus[i].classList.add('shaka-hidden');
+                menus[i].setAttribute('aria-hidden', 'true');
+            }
+
+            var expanded = this._container.querySelectorAll('[aria-expanded="true"]');
+            for (var j = 0; j < expanded.length; j++) {
+                expanded[j].setAttribute('aria-expanded', 'false');
+            }
         };
 
         PlayerEl.prototype._toggleSubs = function () {
@@ -945,6 +1205,9 @@
         customElements.define('shaka-hls-dash-player', PlayerEl);
     }
 })();
+
+
+
 
 
 

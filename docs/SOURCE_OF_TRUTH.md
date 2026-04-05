@@ -8,7 +8,7 @@ When documentation and code disagree, **code is the source of truth**.
 
 ## Current Source-Of-Truth Files (Shaka-first)
 
-- `oss/shaka-hls-dash-player/player.js`
+- `oss/shaka-hls-dash-player/shaka-hls-dash-player.js`
 - `oss/shaka-hls-dash-player/index.html`
 - `roncodev-site/public/players/shaka-hls-dash-player.js`
 - `roncodev-site/src/pages/demo.astro`
@@ -27,3 +27,4 @@ These files are kept only to preserve migration context and API-compat notes:
 ## Why this exists
 
 Some docs get stale over time. This folder records decisions for the Shaka component while anchoring behavior in current implementation reality.
+

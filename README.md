@@ -14,7 +14,7 @@ Standalone embeddable web component built on **Shaka Player**.
 ## Quick Start
 
 ```html
-<script src="./player.js"></script>
+<script src="./shaka-hls-dash-player.js"></script>
 
 <shaka-hls-dash-player
   base-url="https://cdn.example.com/videos/my-video/"
@@ -67,3 +67,4 @@ your-video/
 
 - This repo intentionally starts with Shaka `4.10.0` to match the currently-shipped local template in `video-converter-app/public/player-templates/player-shaka.html`.
 - See [`docs/SOURCE_OF_TRUTH.md`](./docs/SOURCE_OF_TRUTH.md) before changing behavior.
+
